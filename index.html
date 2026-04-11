@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Rotation - X Y Z Keys</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: Arial, Helvetica, sans-serif; }
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            pointer-events: none;
+            z-index: 10;
+            font-size: 14px;
+        }
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 14px;
+            pointer-events: none;
+            z-index: 10;
+        }
+        kbd {
+            background: #333;
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-weight: bold;
+            color: #ffaa00;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h2>Task 1: Rotation Control</h2>
+        <p>Object placed at <strong>Origin (0,0,0)</strong></p>
+    </div>
+    <div id="controls">
+        <strong>Controls:</strong><br>
+        <kbd>x</kbd> / <kbd>X</kbd> → Rotate around X-axis (±)<br>
+        <kbd>y</kbd> / <kbd>Y</kbd> → Rotate around Y-axis (±)<br>
+        <kbd>z</kbd> / <kbd>Z</kbd> → Rotate around Z-axis (±)
+    </div>
+
+    <!-- Import Three.js core and add-ons -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+        // --- Setup Scene, Cameras, Renderers ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x111122);
+        
+        // Perspective Camera (for 3D view)
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(5, 5, 5);
+        camera.lookAt(0, 0, 0);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true; // enable shadows for better depth
+        document.body.appendChild(renderer.domElement);
+        
+        // CSS2DRenderer for text labels (always facing camera)
+        const labelRenderer = new CSS2DRenderer();
+        labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        labelRenderer.domElement.style.position = 'absolute';
+        labelRenderer.domElement.style.top = '0px';
+        labelRenderer.domElement.style.left = '0px';
+        labelRenderer.domElement.style.pointerEvents = 'none';
+        document.body.appendChild(labelRenderer.domElement);
+        
+        // --- Orbit Controls for camera (optional, but helpful to view rotation) ---
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        
+        // --- Helper: Add a grid and axes helper to visualize origin ---
+        const gridHelper = new THREE.GridHelper(10, 20, 0x888888, 0x444444);
+        scene.add(gridHelper);
+        
+        // Simple axes helper (red=X, green=Y, blue=Z)
+        const axesHelper = new THREE.AxesHelper(3);
+        scene.add(axesHelper);
+        
+        // --- The 3D Object (choose a colorful, interesting one) ---
+        // I'll use a TorusKnotGeometry (fancy knot) with a bright material
+        const geometry = new THREE.TorusKnotGeometry(1, 0.3, 128, 32, 3, 4);
+        const material = new THREE.MeshStandardMaterial({ 
+            color: 0xff6600, 
+            roughness: 0.3, 
+            metalness: 0.7,
+            emissive: 0x221100
+        });
+        const object = new THREE.Mesh(geometry, material);
+        object.castShadow = true;
+        object.receiveShadow = false;
+        object.position.set(0, 0, 0); // explicitly at origin
+        scene.add(object);
+        
+        // Add a subtle wireframe inside for cool effect (optional)
+        const wireframeMat = new THREE.MeshBasicMaterial({ color: 0xffaa44, wireframe: true, transparent: true, opacity: 0.15 });
+        const wireframeObj = new THREE.Mesh(geometry, wireframeMat);
+        object.add(wireframeObj); // attach to main object so it rotates together
+        
+        // --- Lighting (so the object looks 3D) ---
+        // Ambient light
+        const ambientLight = new THREE.AmbientLight(0x404060);
+        scene.add(ambientLight);
+        // Main directional light
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+        dirLight.position.set(2, 5, 3);
+        dirLight.castShadow = true;
+        scene.add(dirLight);
+        // Fill light from back
+        const backLight = new THREE.PointLight(0x4466cc, 0.5);
+        backLight.position.set(-2, 1, -3);
+        scene.add(backLight);
+        // Rim light
+        const rimLight = new THREE.PointLight(0xffaa66, 0.4);
+        rimLight.position.set(1, 2, -2);
+        scene.add(rimLight);
+        
+        // --- Add a small sphere at origin for reference ---
+        const originSphereMat = new THREE.MeshStandardMaterial({ color: 0xff3333, emissive: 0x331100 });
+        const originSphere = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), originSphereMat);
+        scene.add(originSphere);
+        
+        // --- CSS2D Text Label at origin ---
+        const originDiv = document.createElement('div');
+        originDiv.textContent = '📍 Origin (0,0,0)';
+        originDiv.style.color = '#ff8888';
+        originDiv.style.fontSize = '14px';
+        originDiv.style.fontWeight = 'bold';
+        originDiv.style.textShadow = '1px 1px 0px black';
+        const originLabel = new CSS2DObject(originDiv);
+        originLabel.position.set(0, -0.5, 0);
+        scene.add(originLabel);
+        
+        // --- Rotation Speed (radians per key press) ---
+        const ROTATION_STEP = 0.1; // ~5.7 degrees
+        
+        // --- Keyboard Event Handling ---
+        window.addEventListener('keydown', (event) => {
+            const key = event.key;
+            // Determine rotation axis and sign
+            let axis = null;
+            let angle = 0;
+            
+            switch(key) {
+                case 'x': axis = 'x'; angle = +ROTATION_STEP; break;
+                case 'X': axis = 'x'; angle = -ROTATION_STEP; break;
+                case 'y': axis = 'y'; angle = +ROTATION_STEP; break;
+                case 'Y': axis = 'y'; angle = -ROTATION_STEP; break;
+                case 'z': axis = 'z'; angle = +ROTATION_STEP; break;
+                case 'Z': axis = 'z'; angle = -ROTATION_STEP; break;
+                default: return; // ignore other keys
+            }
+            
+            // Apply rotation to the object
+            if (axis === 'x') object.rotateX(angle);
+            if (axis === 'y') object.rotateY(angle);
+            if (axis === 'z') object.rotateZ(angle);
+            
+            // Optional: log current rotation for debugging (in radians)
+            console.log(`Rotated around ${axis} by ${angle.toFixed(2)} rad. Rotation:`, object.rotation);
+        });
+        
+        // --- Simple Animation Loop ---
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update(); // update orbit controls if user interacts
+            renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
+        }
+        animate();
+        
+        // Handle window resize
+        window.addEventListener('resize', onWindowResize, false);
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        console.log('Task 1 Ready! Use keys: x, X, y, Y, z, Z to rotate the object at origin.');
+    </script>
+</body>
+</html>
